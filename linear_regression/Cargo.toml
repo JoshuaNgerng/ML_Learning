@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "linear_regression",
+    "train",
+    "predict",
+    "visualize"
+]
