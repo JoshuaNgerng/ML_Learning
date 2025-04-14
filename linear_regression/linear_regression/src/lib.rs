@@ -6,7 +6,7 @@
 /*   By: jngerng <jngerng@student.42kl.edu.my>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/26 10:34:17 by jngerng           #+#    #+#             */
-/*   Updated: 2025/04/15 00:33:27 by jngerng          ###   ########.fr       */
+/*   Updated: 2025/04/15 01:11:23 by jngerng          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -21,6 +21,11 @@ pub struct LinearRegression {
 	learning_rate: f64,
 	epochs: usize
 }
+
+/*
+revise my algo
+https://www.youtube.com/watch?v=O96hzKRx3O4
+*/
 
 impl LinearRegression {
 	pub fn new(learning_rate: f64, epochs: usize) -> Self {
@@ -38,6 +43,9 @@ impl LinearRegression {
 			panic!("The number of observations in y must match the number of rows in x.")
 		}
 
+		let std = x.std(0.0);
+		let mean = x.mean().unwrap();
+		let normal_x = (x - mean) / std;
 		let mut coeff = Array1::<f64>::zeros(feature);
 		let mut constant = y.sum() / y.len() as f64;
 		let mut lost_history = Vec::<f64>::new();
@@ -45,12 +53,12 @@ impl LinearRegression {
 
 		for _ in 0..self.epochs {
 			// println!("debug epoch {}", i);
-			let predict = x.dot(&coeff) + constant;
+			let predict = normal_x.dot(&coeff) + constant;
 			// println!("debug predict {:?}", predict);
 			let residual = &predict - y;
 			// println!("debug residual {:?}", residual);
-			let gradient = (1.0 / observ as f64) * (x.t().dot(&residual));
-			let shift = (1.0 / observ as f64) * (residual.sum());
+			let gradient = (2.0 / observ as f64) * (normal_x.t().dot(&residual));
+			let shift = (2.0 / observ as f64) * (residual.sum());
 			let loss = self.cal_loss(&residual);
 			// println!("debug grad {:?} {}", gradient, shift);
 			coeff = &coeff - (self.learning_rate * &gradient);

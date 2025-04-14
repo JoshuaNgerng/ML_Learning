@@ -6,7 +6,7 @@
 /*   By: jngerng <jngerng@student.42kl.edu.my>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/26 14:04:50 by jngerng           #+#    #+#             */
-/*   Updated: 2025/04/15 00:35:00 by jngerng          ###   ########.fr       */
+/*   Updated: 2025/04/15 00:55:20 by jngerng          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -137,7 +137,7 @@ fn main() {
 	// println!("{:?}, {:?}", header[0], header[1]);
 	// println!("{}", y.sum() / y.len() as f64);
 	let epoch = 1e3 as usize;
-	let lr = 1e-2;//find_best_lr(&y, &x, 1.0, 20, epoch);
+	let lr = 1e-6;//find_best_lr(&y, &x, 1.0, 20, epoch);
 	let mut model = LinearRegression::new(lr, epoch);
 	// println!("debug y {:?}\nx {:?}", y, x);
 	model.fit(&x, &y);
