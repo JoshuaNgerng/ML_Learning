@@ -6,7 +6,7 @@
 /*   By: jngerng <jngerng@student.42kl.edu.my>      +#+  +:+       +#+        */
 /*                                                +#+#+#+#+#+   +#+           */
 /*   Created: 2025/03/26 10:34:17 by jngerng           #+#    #+#             */
-/*   Updated: 2025/03/26 15:49:03 by jngerng          ###   ########.fr       */
+/*   Updated: 2025/04/15 00:33:27 by jngerng          ###   ########.fr       */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@ use std::fmt;
 
 pub struct LinearRegression {
 	coefficients: Option<Array1<f64>>,
+	constant: f64,
 	learning_rate: f64,
 	epochs: usize
 }
@@ -24,29 +25,43 @@ pub struct LinearRegression {
 impl LinearRegression {
 	pub fn new(learning_rate: f64, epochs: usize) -> Self {
 		LinearRegression {
-			coefficients: None, learning_rate, epochs
+			coefficients: None, constant: 0.0, learning_rate, epochs
 		}
 	}
 	pub fn fit(
 		&mut self, x: &Array2<f64>, y: &Array1<f64>,
-	) {
+	) -> Vec<f64> {
 		let observ = x.nrows();
 		let feature = x.ncols();
-
+		// println!("debug obs{}, fea{}", observ, feature);
 		if y.len() != observ {
-			panic!("The number of observations in y must match the number of rows in x.")            
+			panic!("The number of observations in y must match the number of rows in x.")
 		}
 
-		let mut coeff =  Array1::<f64>::zeros(feature);
-		
+		let mut coeff = Array1::<f64>::zeros(feature);
+		let mut constant = y.sum() / y.len() as f64;
+		let mut lost_history = Vec::<f64>::new();
+		// println!("debug {:?} {:?}", coeff, x.t());
+
 		for _ in 0..self.epochs {
-			let predict = x.dot(&coeff);
+			// println!("debug epoch {}", i);
+			let predict = x.dot(&coeff) + constant;
+			// println!("debug predict {:?}", predict);
 			let residual = &predict - y;
-			let gradient = x.t().dot(&residual) / observ as f64;
-			coeff = &coeff - &(self.learning_rate * gradient);
+			// println!("debug residual {:?}", residual);
+			let gradient = (1.0 / observ as f64) * (x.t().dot(&residual));
+			let shift = (1.0 / observ as f64) * (residual.sum());
+			let loss = self.cal_loss(&residual);
+			// println!("debug grad {:?} {}", gradient, shift);
+			coeff = &coeff - (self.learning_rate * &gradient);
+			constant = constant - (self.learning_rate * shift);
+			lost_history.push(loss);
+			// println!("debug coeff {:?} {}", coeff, constant);
 		}
 
 		self.coefficients = Some(coeff);
+		self.constant = constant;
+		lost_history
 	}
 	pub fn predict(&self, x: &Array2<f64>) -> Option<Array1<f64>> {
 		match &self.coefficients {
@@ -61,6 +76,25 @@ impl LinearRegression {
 	}
 	pub fn assign_coeffcients(&mut self, coefficient: &Array1<f64>) {
 		self.coefficients = Some(coefficient.clone());
+	}
+	pub fn print_out_coefficients(&self) {
+		if let Some(coeff) = &self.coefficients {
+			println!("{} {}", coeff, self.constant);
+		} else {
+			println!("None");
+		}
+	}
+	fn cal_loss(&self, residual: &Array1<f64>) -> f64 {
+		let res = residual * residual;
+		res.sum() / res.len() as f64
+	}
+	pub fn fetch_coefficients(&self) -> Option<(Vec<f64>, f64)> {
+		if let Some(coeff) = &self.coefficients {
+			let (raw_vec, _offset) = coeff.clone().into_raw_vec_and_offset();
+			return Some((raw_vec, self.constant));
+			// println!("{} {}", coeff, self.constant);
+		}
+		None
 	}
 }
 
@@ -112,10 +146,6 @@ pub fn read_csv(
 	}
 
 	Ok((header, y, x))
-}
-
-pub fn csv_parser() {
-
 }
 
 #[cfg(test)]
