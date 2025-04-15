@@ -10,8 +10,8 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-use ndarray::{Array1, Array2};
-use csv::{ReaderBuilder};
+use ndarray::{Array1, Array2, concatenate, Axis, s};
+use csv::ReaderBuilder;
 use std::error::Error;
 use std::fmt;
 
@@ -25,6 +25,7 @@ pub struct LinearRegression {
 /*
 revise my algo
 https://www.youtube.com/watch?v=O96hzKRx3O4
+https://stackoverflow.com/questions/42869949/gradient-descent-on-linear-regression-not-converging
 */
 
 impl LinearRegression {
@@ -42,33 +43,33 @@ impl LinearRegression {
 		if y.len() != observ {
 			panic!("The number of observations in y must match the number of rows in x.")
 		}
-
-		let std = x.std(0.0);
-		let mean = x.mean().unwrap();
-		let normal_x = (x - mean) / std;
-		let mut coeff = Array1::<f64>::zeros(feature);
-		let mut constant = y.sum() / y.len() as f64;
+		let feature_matrix = self.normalize_n_pad_feature_matrix(x);
+		// println!("{:?}", feature_matrix);
+		let mut coeff = Array1::<f64>::zeros(feature + 1);
+		coeff[0] = y.sum() / y.len() as f64;
 		let mut lost_history = Vec::<f64>::new();
 		// println!("debug {:?} {:?}", coeff, x.t());
-
-		for _ in 0..self.epochs {
-			// println!("debug epoch {}", i);
-			let predict = normal_x.dot(&coeff) + constant;
-			// println!("debug predict {:?}", predict);
+		
+		for i in 0..self.epochs {
+			let predict = feature_matrix.dot(&coeff);
 			let residual = &predict - y;
+			// if i % 1000 == 0 {
+				// println!("{}\n{}", predict, y);
+			// }
 			// println!("debug residual {:?}", residual);
-			let gradient = (2.0 / observ as f64) * (normal_x.t().dot(&residual));
-			let shift = (2.0 / observ as f64) * (residual.sum());
+			let gradient = (2.0 / observ as f64) * (feature_matrix.t().dot(&residual));
 			let loss = self.cal_loss(&residual);
 			// println!("debug grad {:?} {}", gradient, shift);
 			coeff = &coeff - (self.learning_rate * &gradient);
-			constant = constant - (self.learning_rate * shift);
 			lost_history.push(loss);
-			// println!("debug coeff {:?} {}", coeff, constant);
+			if i % 1000 == 0 {
+				// println!("{}\n", residual);
+				println!("{}", i);
+			}
 		}
-
-		self.coefficients = Some(coeff);
-		self.constant = constant;
+		let slice_view = coeff.slice(s![1..; 1]);
+		self.coefficients = Some(slice_view.to_owned());
+		self.constant = coeff[0];
 		lost_history
 	}
 	pub fn predict(&self, x: &Array2<f64>) -> Option<Array1<f64>> {
@@ -96,13 +97,18 @@ impl LinearRegression {
 		let res = residual * residual;
 		res.sum() / res.len() as f64
 	}
-	pub fn fetch_coefficients(&self) -> Option<(Vec<f64>, f64)> {
+	pub fn fetch_coefficients(&self) -> Option<(Array1<f64>, f64)> {
 		if let Some(coeff) = &self.coefficients {
-			let (raw_vec, _offset) = coeff.clone().into_raw_vec_and_offset();
-			return Some((raw_vec, self.constant));
+			return Some((coeff.clone(), self.constant));
 			// println!("{} {}", coeff, self.constant);
 		}
 		None
+	}
+	fn normalize_n_pad_feature_matrix(&self, x: &Array2<f64>) -> Array2<f64> {
+		let normal_x = (x - x.mean().unwrap()) / x.std(0.0);
+		let new_column = Array2::from_elem((x.nrows(), 1), 1.0);
+		return concatenate![Axis(1), new_column, normal_x];
+		// return concatenate![Axis(1), new_column, *x];
 	}
 }
 

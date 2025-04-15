@@ -78,18 +78,21 @@ fn visualize_data(
 	root.fill(&WHITE)?;
 	let y_min = data.iter().cloned().fold(f64::INFINITY, f64::min);
 	let y_max = data.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+
 	let mut chart = ChartBuilder::on(&root)
 		.caption(title, ("sans-serif", 30))
 		.margin(20)
 		.x_label_area_size(40)
 		.y_label_area_size(40)
 		.build_cartesian_2d(0..data.len(), y_min..y_max)?;
+	// println!("test1");
 
 	chart.configure_mesh()
 		.x_desc(x_label)
 		.y_desc(data_label)
 		.draw()?;
 
+	// println!("huh");
 	chart.draw_series(LineSeries::new(
 		(0..data.len()).zip(data.iter().cloned()),
 		&BLUE,
@@ -136,11 +139,13 @@ fn main() {
 	let Ok((header, y, x)) = res else { eprintln!("Error {}", res.unwrap_err()); return; };
 	// println!("{:?}, {:?}", header[0], header[1]);
 	// println!("{}", y.sum() / y.len() as f64);
-	let epoch = 1e3 as usize;
-	let lr = 1e-6;//find_best_lr(&y, &x, 1.0, 20, epoch);
+	let epoch = 2e4 as usize;
+	let lr = 1e-8;//find_best_lr(&y, &x, 1.0, 20, epoch);
 	let mut model = LinearRegression::new(lr, epoch);
 	// println!("debug y {:?}\nx {:?}", y, x);
-	model.fit(&x, &y);
+	let loss = model.fit(&x, &y);
+	// println!("done");
+	let _ = visualize_data(&loss, "Loss Value", "Iteration", "Loss Over Iteration");
 	println!("best lr {}, epoch {}", lr, epoch);
 	model.print_out_coefficients();
 	// let x_vec = x.to_vec();
