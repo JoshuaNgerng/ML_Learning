@@ -10,13 +10,15 @@
 /*                                                                            */
 /* ************************************************************************** */
 
-use ndarray::{Array1, Array2};
+use ndarray::Array1;
 use linear_regression::{LinearRegression, read_csv};
 use plotters::prelude::*;
-use std::error::Error;
+use std::{error::Error, f64};
+use std::fs::File;
+use std::io::Write;
 
 fn plot_data(
-	y_data: &Vec<f64>, x_data: &Vec<f64>,
+	y_data: &Array1<f64>, x_data: &Array1<f64>,
 	data_label: &str, x_label: &str, title: &str,
 	coefficient: f64, intercept: f64
 ) -> Result<(), Box<dyn Error>> {
@@ -107,63 +109,32 @@ fn visualize_data(
 	Ok(())
 }
 
-fn find_best_lr(
-	y: &Array1<f64>, x: &Array2<f64>, start_lr: f64,
-	iter: usize, epoch: usize
-) -> f64{
-	let mut best_lr = start_lr;
-	let mut lr = start_lr;
-	let mut best_loss = f64::INFINITY;
-	for i in 0..iter {
-		let mut model = LinearRegression::new(lr, epoch);
-		let loss = model.fit(x, y);
-		lr /= 10.0;
-		if loss.iter().any(|&x| x.is_nan()) == true {
-			continue ;
-		}
-		if i % 10 == 0 {
-			let title = format!("Loss with lr {}", lr);
-			let _ = visualize_data(&loss, "Loss Value", "Generation", title.as_str());
-		}
-		let ave = loss.iter().sum::<f64>() / loss.len() as f64;
-		if ave < best_loss {
-			best_loss = ave;
-			best_lr = lr;
-		}
-	}
-	best_lr
-}
-
-fn main() {
-	let res = read_csv("../data.csv");
-	let Ok((header, y, x)) = res else { eprintln!("Error {}", res.unwrap_err()); return; };
-	// println!("{:?}, {:?}", header[0], header[1]);
-	// println!("{}", y.sum() / y.len() as f64);
-	let epoch = 2e4 as usize;
-	let lr = 1e-8;//find_best_lr(&y, &x, 1.0, 20, epoch);
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+	let (header, y, x) = read_csv("../data.csv")?;
+	let epoch = 100;
+	let lr = 1e-1;
 	let mut model = LinearRegression::new(lr, epoch);
-	// println!("debug y {:?}\nx {:?}", y, x);
 	let loss = model.fit(&x, &y);
-	// println!("done");
-	let _ = visualize_data(&loss, "Loss Value", "Iteration", "Loss Over Iteration");
-	println!("best lr {}, epoch {}", lr, epoch);
+	if loss.iter().any(|&x| x.is_nan()) == false {
+		visualize_data(&loss, "Loss Value", "Iteration", "Loss Over Iteration")?;
+	}
 	model.print_out_coefficients();
-	// let x_vec = x.to_vec();
 	match model.fetch_coefficients() {
 		Some((coeff, intercept)) => {
-			let (y_vec, _offset) = y.clone().into_raw_vec_and_offset();
-			let (x_vec, _offset) = x.clone().into_raw_vec_and_offset();
+			let flatten_x = x.to_shape(x.len()).unwrap().to_owned();
+			if coeff[0] == f64::NAN || intercept == f64::NAN {
+				eprintln!("No Coefficient converge to, try having a smaller learning rate");
+				return Err("No Coefficients for model found".into());
+			}
 			let _ = plot_data(
-				&y_vec, &x_vec, &header[0], &header[1],
+				&y, &flatten_x, &header[0], &header[1],
 				"Mileage against price", coeff[0], intercept
 			);
+			let mut file = File::create("../result.txt")?;
+			let text = format!("{} {}\n", coeff[0], intercept);
+			file.write_all(text.as_bytes())?;
 		}
-		None => { }
+		None => { println!("No Coefficient converge to, try having a smaller learning rate"); }
 	}
-	let (y_vec, _offset) = y.clone().into_raw_vec_and_offset();
-	let (x_vec, _offset) = x.clone().into_raw_vec_and_offset();
-	let _ = plot_data(
-		&y_vec, &x_vec, &header[0], &header[1],
-		"test", -34.1729662, 317443.77648
-	);
+	Ok(())
 }

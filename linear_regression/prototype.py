@@ -25,8 +25,8 @@ X = np.c_[np.ones(X_norm.shape[0]), X_norm]
 # Y = scaler_y.fit_transform(y.reshape(-1, 1)).flatten() 
 
 
-alpha = 0.1
-epochs = int(100)
+alpha = 0.01
+epochs = int(1000)
 
 theta = np.random.randn(X.shape[1])
 

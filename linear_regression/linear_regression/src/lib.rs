@@ -23,7 +23,7 @@ pub struct LinearRegression {
 }
 
 /*
-revise my algo
+reference
 https://www.youtube.com/watch?v=O96hzKRx3O4
 https://stackoverflow.com/questions/42869949/gradient-descent-on-linear-regression-not-converging
 */
@@ -41,35 +41,34 @@ impl LinearRegression {
 		let feature = x.ncols();
 		// println!("debug obs{}, fea{}", observ, feature);
 		if y.len() != observ {
+
 			panic!("The number of observations in y must match the number of rows in x.")
 		}
-		let feature_matrix = self.normalize_n_pad_feature_matrix(x);
-		// println!("{:?}", feature_matrix);
+		let (feature_matrix, mean, std) = self.normalize_n_pad_feature_matrix(x);
 		let mut coeff = Array1::<f64>::zeros(feature + 1);
-		coeff[0] = y.sum() / y.len() as f64;
+		let y_mean = y.mean().unwrap();
+		coeff[0] = mean;
 		let mut lost_history = Vec::<f64>::new();
-		// println!("debug {:?} {:?}", coeff, x.t());
 		
 		for i in 0..self.epochs {
 			let predict = feature_matrix.dot(&coeff);
 			let residual = &predict - y;
-			// if i % 1000 == 0 {
-				// println!("{}\n{}", predict, y);
-			// }
-			// println!("debug residual {:?}", residual);
 			let gradient = (2.0 / observ as f64) * (feature_matrix.t().dot(&residual));
 			let loss = self.cal_loss(&residual);
-			// println!("debug grad {:?} {}", gradient, shift);
 			coeff = &coeff - (self.learning_rate * &gradient);
 			lost_history.push(loss);
 			if i % 1000 == 0 {
-				// println!("{}\n", residual);
-				println!("{}", i);
+				println!("loss: {}, coefficients {}\n", loss, coeff);
 			}
 		}
+		coeff /= std;
 		let slice_view = coeff.slice(s![1..; 1]);
+		let mut constant = y_mean;
+		for val in slice_view.iter() {
+			constant -= mean * *val;
+		}
 		self.coefficients = Some(slice_view.to_owned());
-		self.constant = coeff[0];
+		self.constant = constant;
 		lost_history
 	}
 	pub fn predict(&self, x: &Array2<f64>) -> Option<Array1<f64>> {
@@ -104,11 +103,12 @@ impl LinearRegression {
 		}
 		None
 	}
-	fn normalize_n_pad_feature_matrix(&self, x: &Array2<f64>) -> Array2<f64> {
-		let normal_x = (x - x.mean().unwrap()) / x.std(0.0);
+	fn normalize_n_pad_feature_matrix(&self, x: &Array2<f64>) -> (Array2<f64>, f64, f64) {
+		let mean = x.mean().unwrap();
+		let std = x.std(0.0);
+		let normal_x = (x - mean) / std;
 		let new_column = Array2::from_elem((x.nrows(), 1), 1.0);
-		return concatenate![Axis(1), new_column, normal_x];
-		// return concatenate![Axis(1), new_column, *x];
+		return (concatenate![Axis(1), new_column, normal_x], mean, std);
 	}
 }
 
