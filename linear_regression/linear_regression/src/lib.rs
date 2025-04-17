@@ -35,13 +35,13 @@ impl LinearRegression {
 		}
 	}
 	pub fn fit(
-		&mut self, x: &Array2<f64>, y: &Array1<f64>,
+		&mut self, x: &Array2<f64>, y: &Array1<f64>, verbose: bool
 	) -> Vec<f64> {
+		let step = self.epochs / 10;
 		let observ = x.nrows();
 		let feature = x.ncols();
 		// println!("debug obs{}, fea{}", observ, feature);
 		if y.len() != observ {
-
 			panic!("The number of observations in y must match the number of rows in x.")
 		}
 		let (feature_matrix, mean, std) = self.normalize_n_pad_feature_matrix(x);
@@ -57,8 +57,8 @@ impl LinearRegression {
 			let loss = self.cal_loss(&residual);
 			coeff = &coeff - (self.learning_rate * &gradient);
 			lost_history.push(loss);
-			if i % 1000 == 0 {
-				println!("loss: {}, coefficients {}\n", loss, coeff);
+			if i % step == 0 && verbose == true {
+				println!("epoch: {}, loss: {}, coefficients {}", i, loss, coeff);
 			}
 		}
 		coeff /= std;
@@ -181,7 +181,7 @@ mod tests {
 		
 		let y_data = Array1::from_vec(vec![1.0, 2.0, 2.0, 3.0, 4.0]);
 
-		model.fit(&x_data, &y_data);
+		model.fit(&x_data, &y_data, true);
 
 		assert!(model.coefficients.is_some()); // Check that coefficients are computed
 		let coefficients = model.coefficients.as_ref().unwrap();
@@ -200,7 +200,7 @@ mod tests {
 		
 		let y_data = Array1::from_vec(vec![1.0]); // Only one observation
 
-		model.fit(&x_data, &y_data); // This should panic
+		model.fit(&x_data, &y_data, true); // This should panic
 	}
 	#[test]
 	fn test_read_csv() {

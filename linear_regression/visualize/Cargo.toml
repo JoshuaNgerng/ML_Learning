@@ -5,7 +5,9 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[lib]
+crate-type = ["lib"]
+
 [dependencies]
-linear_regression = { path = "../linear_regression" }
 ndarray = "0.16.1"
-csv = "1.3.1"
+plotters = "0.3.7"
