@@ -52,8 +52,11 @@ target/
 
 # C/C++ gitignore from github template
 
+
 # test files
 
 test*
 test/*
 
+#vscode settings
+.vscode/*
